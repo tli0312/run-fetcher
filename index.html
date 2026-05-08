@@ -225,11 +225,6 @@
     <label>GitHub Personal Access Token</label>
     <input type="password" id="githubPat" placeholder="github_pat_..." autocomplete="off">
   </div>
-  <div class="field">
-    <label>GitHub Repo (data repo name)</label>
-    <input type="text" id="githubRepo" placeholder="running-data" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-  </div>
-
   <button id="saveBtn" onclick="saveSetup()">Save & Continue</button>
   <div class="setup-error" id="setupError"></div>
 </div>
@@ -258,7 +253,8 @@
 
 <script>
   // ── Credential keys ──
-  const KEYS = ['stravaClientId','stravaClientSecret','stravaRefreshToken','githubUsername','githubPat','githubRepo'];
+  const KEYS = ['stravaClientId','stravaClientSecret','stravaRefreshToken','githubUsername','githubPat'];
+  const DATA_REPO = 'run-fetcher'; // public repo — no auth required for reads
 
   // ── Init ──
   function init() {
@@ -275,7 +271,7 @@
     document.getElementById('setupScreen').style.display = 'block';
     document.getElementById('mainScreen').style.display = 'none';
     // Pre-fill existing values (except secrets)
-    ['stravaClientId','githubUsername','githubRepo'].forEach(k => {
+    ['stravaClientId','githubUsername'].forEach(k => {
       const v = localStorage.getItem(k);
       if (v) document.getElementById(k).value = v;
     });
@@ -354,7 +350,7 @@
     const rtok   = localStorage.getItem('stravaRefreshToken');
     const ghUser = localStorage.getItem('githubUsername');
     const ghPat  = localStorage.getItem('githubPat');
-    const ghRepo = localStorage.getItem('githubRepo');
+    const ghRepo = DATA_REPO;
 
     try {
       // Step 1: Refresh Strava token
