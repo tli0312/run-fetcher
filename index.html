@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Run Fetcher">
+  <title>Run Fetcher</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d0d;
+      color: #e8e8e8;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 20px 80px;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 40px;
+    }
+
+    /* ── Main button ── */
+    #fetchBtn {
+      width: 100%;
+      max-width: 340px;
+      padding: 20px;
+      font-size: 1.25rem;
+      font-weight: 600;
+      background: #ff5a1f;
+      color: #fff;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #fetchBtn:active { transform: scale(0.97); background: #e04d18; }
+    #fetchBtn:disabled { background: #333; color: #666; cursor: default; transform: none; }
+
+    .spinner {
+      width: 20px; height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Status log ── */
+    #status {
+      width: 100%;
+      max-width: 340px;
+      margin-top: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .step {
+      font-size: 0.9rem;
+      color: #888;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.4;
+    }
+    .step.active { color: #ccc; }
+    .step.done   { color: #4cd964; }
+    .step.error  { color: #ff453a; }
+
+    .step-icon { flex-shrink: 0; width: 18px; text-align: center; }
+
+    /* ── Settings ── */
+    #setupScreen {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    #setupScreen h2 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    #setupScreen p {
+      font-size: 0.82rem;
+      color: #666;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 0.78rem;
+      color: #888;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .field input {
+      width: 100%;
+      padding: 13px 14px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      color: #e8e8e8;
+      font-size: 0.95rem;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    .field input:focus { border-color: #ff5a1f; }
+
+    #saveBtn {
+      width: 100%;
+      padding: 16px;
+      background: #ff5a1f;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #saveBtn:active { background: #e04d18; }
+
+    .setup-error {
+      color: #ff453a;
+      font-size: 0.82rem;
+      margin-top: 10px;
+      display: none;
+    }
+
+    /* ── Settings gear (main screen) ── */
+    #settingsBtn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 50%;
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: #888;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── iOS install banner ── */
+    #installBanner {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #1c1c1e;
+      border-top: 1px solid #2c2c2e;
+      padding: 14px 18px;
+      font-size: 0.82rem;
+      color: #aaa;
+      line-height: 1.5;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    #installBanner span { flex: 1; }
+    #dismissBanner {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 4px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ SETUP SCREEN ══════════════ -->
+<div id="setupScreen" style="display:none">
+  <h2>Setup</h2>
+  <p>Enter your credentials once. They are stored only on this device and never sent anywhere except Strava and GitHub.</p>
+
+  <div class="field">
+    <label>Strava Client ID</label>
+    <input type="text" id="stravaClientId" placeholder="123456" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  </div>
+  <div class="field">
+    <label>Strava Client Secret</label>
+    <input type="password" id="stravaClientSecret" placeholder="abc123..." autocomplete="off">
+  </div>
+  <div class="field">
+    <label>Strava Refresh Token</label>
+    <input type="password" id="stravaRefreshToken" placeholder="abc123..." autocomplete="off">
+  </div>
+  <div class="field">
+    <label>GitHub Username</label>
+    <input type="text" id="githubUsername" placeholder="tli0312" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  </div>
+  <div class="field">
+    <label>GitHub Personal Access Token</label>
+    <input type="password" id="githubPat" placeholder="github_pat_..." autocomplete="off">
+  </div>
+  <div class="field">
+    <label>GitHub Repo (data repo name)</label>
+    <input type="text" id="githubRepo" placeholder="running-data" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+  </div>
+
+  <button id="saveBtn" onclick="saveSetup()">Save & Continue</button>
+  <div class="setup-error" id="setupError"></div>
+</div>
+
+<!-- ══════════════ MAIN SCREEN ══════════════ -->
+<div id="mainScreen" style="display:none">
+  <button id="settingsBtn" onclick="showSetup()" title="Settings">⚙️</button>
+
+  <h1>Run Fetcher</h1>
+  <p class="subtitle">Fetch → GitHub → Claude in Slack</p>
+
+  <button id="fetchBtn" onclick="fetchRun()">
+    <span id="btnIcon">🏃</span>
+    <span id="btnText">Fetch Latest Run</span>
+    <div class="spinner" id="spinner"></div>
+  </button>
+
+  <div id="status"></div>
+</div>
+
+<!-- ══════════════ iOS INSTALL BANNER ══════════════ -->
+<div id="installBanner" style="display:none">
+  <span>Add to Home Screen for one-tap access: tap <strong>Share ↑</strong> → <strong>Add to Home Screen</strong></span>
+  <button id="dismissBanner" onclick="dismissInstallBanner()">✕</button>
+</div>
+
+<script>
+  // ── Credential keys ──
+  const KEYS = ['stravaClientId','stravaClientSecret','stravaRefreshToken','githubUsername','githubPat','githubRepo'];
+
+  // ── Init ──
+  function init() {
+    const missing = KEYS.some(k => !localStorage.getItem(k));
+    if (missing) {
+      showSetup();
+    } else {
+      showMain();
+    }
+    maybeShowInstallBanner();
+  }
+
+  function showSetup() {
+    document.getElementById('setupScreen').style.display = 'block';
+    document.getElementById('mainScreen').style.display = 'none';
+    // Pre-fill existing values (except secrets)
+    ['stravaClientId','githubUsername','githubRepo'].forEach(k => {
+      const v = localStorage.getItem(k);
+      if (v) document.getElementById(k).value = v;
+    });
+  }
+
+  function showMain() {
+    document.getElementById('setupScreen').style.display = 'none';
+    document.getElementById('mainScreen').style.display = 'flex';
+    document.getElementById('mainScreen').style.flexDirection = 'column';
+    document.getElementById('mainScreen').style.alignItems = 'center';
+  }
+
+  function saveSetup() {
+    const err = document.getElementById('setupError');
+    err.style.display = 'none';
+    for (const k of KEYS) {
+      const val = document.getElementById(k).value.trim();
+      if (!val) {
+        err.textContent = 'All fields are required.';
+        err.style.display = 'block';
+        return;
+      }
+      localStorage.setItem(k, val);
+    }
+    showMain();
+  }
+
+  // ── iOS install banner ──
+  function maybeShowInstallBanner() {
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isStandalone = window.navigator.standalone === true;
+    const dismissed = localStorage.getItem('installBannerDismissed');
+    if (isIos && !isStandalone && !dismissed) {
+      document.getElementById('installBanner').style.display = 'flex';
+    }
+  }
+  function dismissInstallBanner() {
+    localStorage.setItem('installBannerDismissed', '1');
+    document.getElementById('installBanner').style.display = 'none';
+  }
+
+  // ── Status log helpers ──
+  function clearStatus() { document.getElementById('status').innerHTML = ''; }
+  function addStep(id, text, state) {
+    const icon = state === 'pending' ? '⏳' : state === 'done' ? '✅' : state === 'error' ? '❌' : '⏳';
+    const el = document.createElement('div');
+    el.className = `step ${state === 'active' ? 'active' : ''}`;
+    el.id = 'step-' + id;
+    el.innerHTML = `<span class="step-icon">${icon}</span><span>${text}</span>`;
+    document.getElementById('status').appendChild(el);
+    return el;
+  }
+  function updateStep(id, text, state) {
+    const el = document.getElementById('step-' + id);
+    if (!el) return;
+    const icon = state === 'done' ? '✅' : state === 'error' ? '❌' : '⏳';
+    el.className = `step ${state}`;
+    el.innerHTML = `<span class="step-icon">${icon}</span><span>${text}</span>`;
+  }
+
+  // ── Main fetch flow ──
+  async function fetchRun() {
+    const btn = document.getElementById('fetchBtn');
+    const spinner = document.getElementById('spinner');
+    const btnIcon = document.getElementById('btnIcon');
+    const btnText = document.getElementById('btnText');
+
+    btn.disabled = true;
+    btnIcon.style.display = 'none';
+    spinner.style.display = 'block';
+    btnText.textContent = 'Fetching…';
+    clearStatus();
+
+    const cid    = localStorage.getItem('stravaClientId');
+    const csec   = localStorage.getItem('stravaClientSecret');
+    const rtok   = localStorage.getItem('stravaRefreshToken');
+    const ghUser = localStorage.getItem('githubUsername');
+    const ghPat  = localStorage.getItem('githubPat');
+    const ghRepo = localStorage.getItem('githubRepo');
+
+    try {
+      // Step 1: Refresh Strava token
+      addStep('token', 'Refreshing Strava token…', 'active');
+      const tokenRes = await fetch('https://www.strava.com/oauth/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: cid, client_secret: csec, refresh_token: rtok, grant_type: 'refresh_token' })
+      });
+      if (!tokenRes.ok) throw new Error(`Strava token refresh failed: ${tokenRes.status} ${await tokenRes.text()}`);
+      const tokenData = await tokenRes.json();
+      const accessToken = tokenData.access_token;
+      updateStep('token', 'Strava token refreshed', 'done');
+
+      // Step 2: Fetch recent activities
+      addStep('activities', 'Fetching latest run…', 'active');
+      const activitiesRes = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=5', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      if (!activitiesRes.ok) throw new Error(`Activities fetch failed: ${activitiesRes.status}`);
+      const activities = await activitiesRes.json();
+      const run = activities.find(a => a.type === 'Run' || a.sport_type === 'Run');
+      if (!run) throw new Error('No run found in last 5 activities');
+      const runDate = run.start_date_local ? run.start_date_local.slice(0,10) : '';
+      updateStep('activities', `Found: "${run.name}" (${runDate})`, 'done');
+
+      // Step 3: Get lap detail
+      addStep('laps', 'Building CSV…', 'active');
+      const detailRes = await fetch(`https://www.strava.com/api/v3/activities/${run.id}`, {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      if (!detailRes.ok) throw new Error(`Activity detail fetch failed: ${detailRes.status}`);
+      const detail = await detailRes.json();
+      const laps = detail.laps;
+      if (!laps || laps.length === 0) throw new Error('No lap data found for this activity');
+
+      // Build CSV
+      const rows = ['Lap,Distance (km),Pace (min/km),Avg HR,Avg Cadence,Avg Watts'];
+      laps.forEach((lap, i) => {
+        const distKm  = (lap.distance / 1000).toFixed(2);
+        const paceSec = lap.moving_time / (lap.distance / 1000);
+        const paceMin = Math.floor(paceSec / 60);
+        const paceSec2 = String(Math.round(paceSec % 60)).padStart(2, '0');
+        const pace    = `${paceMin}:${paceSec2}`;
+        const hr      = lap.average_heartrate ? Math.round(lap.average_heartrate) : '';
+        const cadence = lap.average_cadence   ? Math.round(lap.average_cadence * 2) : '';
+        const watts   = lap.average_watts     ? Math.round(lap.average_watts) : '';
+        rows.push(`${i + 1},${distKm},${pace},${hr},${cadence},${watts}`);
+      });
+      const csvString = rows.join('\n') + '\n';
+      updateStep('laps', `CSV built (${laps.length} laps)`, 'done');
+
+      // Step 4: Push to GitHub
+      addStep('github', 'Pushing to GitHub…', 'active');
+      const filePath = 'data/latest_run_laps.csv';
+      const apiBase  = `https://api.github.com/repos/${ghUser}/${ghRepo}/contents/${filePath}`;
+      const ghHeaders = { 'Authorization': `token ${ghPat}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' };
+
+      // Get current SHA (needed for updates)
+      let sha = null;
+      const shaRes = await fetch(apiBase, { headers: ghHeaders });
+      if (shaRes.ok) {
+        const shaData = await shaRes.json();
+        sha = shaData.sha;
+      } else if (shaRes.status !== 404) {
+        throw new Error(`GitHub file check failed: ${shaRes.status}`);
+      }
+
+      const commitMsg = `update: ${run.name} ${runDate}`;
+      const content   = btoa(unescape(encodeURIComponent(csvString)));
+      const body      = { message: commitMsg, content };
+      if (sha) body.sha = sha;
+
+      const pushRes = await fetch(apiBase, { method: 'PUT', headers: ghHeaders, body: JSON.stringify(body) });
+      if (!pushRes.ok) {
+        const errText = await pushRes.text();
+        throw new Error(`GitHub push failed: ${pushRes.status} — ${errText}`);
+      }
+      updateStep('github', `Pushed to GitHub ✓`, 'done');
+
+      // Done
+      addStep('done', `Done! "${run.name}" pushed (${laps.length} laps)\nReady — go ask Claude in Slack!`, 'done');
+
+    } catch (err) {
+      const steps = ['token','activities','laps','github','done'];
+      const lastActive = [...document.querySelectorAll('.step.active')].pop();
+      if (lastActive) {
+        lastActive.className = 'step error';
+        lastActive.querySelector('.step-icon').textContent = '❌';
+      }
+      addStep('err', err.message, 'error');
+      console.error(err);
+    } finally {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      btnIcon.style.display = 'inline';
+      btnText.textContent = 'Fetch Latest Run';
+    }
+  }
+
+  // Enter key on setup form
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('setupScreen').style.display !== 'none') {
+      saveSetup();
+    }
+  });
+
+  init();
+</script>
+</body>
+</html>
