@@ -254,7 +254,8 @@
 <script>
   // ── Credential keys ──
   const KEYS = ['stravaClientId','stravaClientSecret','stravaRefreshToken','githubUsername','githubPat'];
-  const DATA_REPO = 'run-fetcher'; // public repo — no auth required for reads
+  const DATA_REPO = 'bequiet';
+  const DATA_PATH = 'running/latest_run_laps.csv';
 
   // ── Init ──
   function init() {
@@ -405,8 +406,7 @@
 
       // Step 4: Push to GitHub
       addStep('github', 'Pushing to GitHub…', 'active');
-      const filePath = 'data/latest_run_laps.csv';
-      const apiBase  = `https://api.github.com/repos/${ghUser}/${ghRepo}/contents/${filePath}`;
+      const apiBase  = `https://api.github.com/repos/${ghUser}/${ghRepo}/contents/${DATA_PATH}`;
       const ghHeaders = { 'Authorization': `token ${ghPat}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' };
 
       // Get current SHA (needed for updates)
